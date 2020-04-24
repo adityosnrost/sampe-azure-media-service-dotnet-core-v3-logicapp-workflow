@@ -1,0 +1,197 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "workflows_mncmediasamplelogic_name": {
+            "defaultValue": "mncmediasamplelogic",
+            "type": "String"
+        },
+        "sites_functionmncmediasample_externalid": {
+            "defaultValue": "/subscriptions/46eec74f-8b13-4ffb-b6e5-b4b4fa700492/resourceGroups/mncsappgroup/providers/Microsoft.Web/sites/functionmncmediasample",
+            "type": "String"
+        },
+        "connections_azureblob_1_externalid": {
+            "defaultValue": "/subscriptions/46eec74f-8b13-4ffb-b6e5-b4b4fa700492/resourceGroups/mncsappgroup/providers/Microsoft.Web/connections/azureblob-1",
+            "type": "String"
+        }
+    },
+    "variables": {},
+    "resources": [
+        {
+            "type": "Microsoft.Logic/workflows",
+            "apiVersion": "2017-07-01",
+            "name": "[parameters('workflows_mncmediasamplelogic_name')]",
+            "location": "southeastasia",
+            "properties": {
+                "state": "Enabled",
+                "definition": {
+                    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+                    "contentVersion": "1.0.0.0",
+                    "parameters": {
+                        "$connections": {
+                            "defaultValue": {},
+                            "type": "Object"
+                        }
+                    },
+                    "triggers": {
+                        "When_a_blob_is_added_or_modified_(properties_only)": {
+                            "recurrence": {
+                                "frequency": "Minute",
+                                "interval": 3
+                            },
+                            "splitOn": "@triggerBody()",
+                            "metadata": {
+                                "JTJmaW5nZXN0dmlkZW9z": "/ingestvideos"
+                            },
+                            "type": "ApiConnection",
+                            "inputs": {
+                                "host": {
+                                    "connection": {
+                                        "name": "@parameters('$connections')['azureblob_1']['connectionId']"
+                                    }
+                                },
+                                "method": "get",
+                                "path": "/datasets/default/triggers/batch/onupdatedfile",
+                                "queries": {
+                                    "folderId": "JTJmaW5nZXN0dmlkZW9z",
+                                    "maxFileCount": 10
+                                }
+                            }
+                        }
+                    },
+                    "actions": {
+                        "EncodeAsset": {
+                            "runAfter": {
+                                "Until": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "Function",
+                            "inputs": {
+                                "body": {
+                                    "assetId": "@{body('SimpleAssetCreation')['assetId']}",
+                                    "assetName": "@{body('SimpleAssetCreation')['nameAsset']}"
+                                },
+                                "function": {
+                                    "id": "[concat(parameters('sites_functionmncmediasample_externalid'), '/functions/EncodeAsset')]"
+                                }
+                            }
+                        },
+                        "PublishAssetService": {
+                            "runAfter": {
+                                "Until_2": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "Function",
+                            "inputs": {
+                                "body": {
+                                    "name": "@{body('CheckEncodeAssetStatus')['jobOutputStateList'][0]['AssetName']}"
+                                },
+                                "function": {
+                                    "id": "[concat(parameters('sites_functionmncmediasample_externalid'), '/functions/PublishAssetService')]"
+                                }
+                            }
+                        },
+                        "SimpleAssetCreation": {
+                            "runAfter": {},
+                            "type": "Function",
+                            "inputs": {
+                                "body": {
+                                    "assetName": "@triggerBody()?['DisplayName']"
+                                },
+                                "function": {
+                                    "id": "[concat(parameters('sites_functionmncmediasample_externalid'), '/functions/SimpleAssetCreation')]"
+                                }
+                            }
+                        },
+                        "Until": {
+                            "actions": {
+                                "CheckUploadBlobStatus": {
+                                    "runAfter": {},
+                                    "type": "Function",
+                                    "inputs": {
+                                        "body": {
+                                            "assetName": "@{body('UploadBlobIntoAsset')['nameAsset']}",
+                                            "destinationContainer": "@{body('UploadBlobIntoAsset')['destinationContainer']}"
+                                        },
+                                        "function": {
+                                            "id": "[concat(parameters('sites_functionmncmediasample_externalid'), '/functions/CheckUploadBlobStatus')]"
+                                        }
+                                    }
+                                }
+                            },
+                            "runAfter": {
+                                "UploadBlobIntoAsset": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "expression": "@equals(body('CheckUploadBlobStatus')['blobCopyStatusList'][0]['blobCopyStatus'], int(2))",
+                            "limit": {
+                                "count": 600,
+                                "timeout": "PT2H"
+                            },
+                            "type": "Until"
+                        },
+                        "Until_2": {
+                            "actions": {
+                                "CheckEncodeAssetStatus": {
+                                    "runAfter": {},
+                                    "type": "Function",
+                                    "inputs": {
+                                        "body": "@body('EncodeAsset')",
+                                        "function": {
+                                            "id": "[concat(parameters('sites_functionmncmediasample_externalid'), '/functions/CheckEncodeAssetStatus')]"
+                                        }
+                                    }
+                                }
+                            },
+                            "runAfter": {
+                                "EncodeAsset": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "expression": "@equals(body('CheckEncodeAssetStatus')['jobStatus'], string('Finished'))",
+                            "limit": {
+                                "count": 600,
+                                "timeout": "PT2H"
+                            },
+                            "type": "Until"
+                        },
+                        "UploadBlobIntoAsset": {
+                            "runAfter": {
+                                "SimpleAssetCreation": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "Function",
+                            "inputs": {
+                                "body": {
+                                    "assetId": "@{body('SimpleAssetCreation')['assetId']}",
+                                    "assetName": "@{body('SimpleAssetCreation')['nameAsset']}",
+                                    "fileName": "@{triggerBody()?['DisplayName']}",
+                                    "sourceContainer": "@{split(triggerBody()?['Path'],'/')[1]}"
+                                },
+                                "function": {
+                                    "id": "[concat(parameters('sites_functionmncmediasample_externalid'), '/functions/UploadBlobIntoAsset')]"
+                                }
+                            }
+                        }
+                    },
+                    "outputs": {}
+                },
+                "parameters": {
+                    "$connections": {
+                        "value": {
+                            "azureblob_1": {
+                                "connectionId": "[parameters('connections_azureblob_1_externalid')]",
+                                "connectionName": "azureblob-1",
+                                "id": "/subscriptions/46eec74f-8b13-4ffb-b6e5-b4b4fa700492/providers/Microsoft.Web/locations/southeastasia/managedApis/azureblob"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    ]
+}
