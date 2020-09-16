@@ -2,16 +2,16 @@
     "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
     "contentVersion": "1.0.0.0",
     "parameters": {
-        "workflows_mncmediasamplelogic_name": {
-            "defaultValue": "mncmediasamplelogic",
+        "workflows_mediasamplelogic_name": {
+            "defaultValue": "mediasamplelogic",
             "type": "String"
         },
-        "sites_functionmncmediasample_externalid": {
-            "defaultValue": "/subscriptions/46eec74f-8b13-4ffb-b6e5-b4b4fa700492/resourceGroups/mncsappgroup/providers/Microsoft.Web/sites/functionmncmediasample",
+        "sites_functionmediasample_externalid": {
+            "defaultValue": "/subscriptions/46eec74f-8b13-4ffb-b6e5-b4b4fa700492/resourceGroups/sappgroup/providers/Microsoft.Web/sites/functionmediasample",
             "type": "String"
         },
         "connections_azureblob_1_externalid": {
-            "defaultValue": "/subscriptions/46eec74f-8b13-4ffb-b6e5-b4b4fa700492/resourceGroups/mncsappgroup/providers/Microsoft.Web/connections/azureblob-1",
+            "defaultValue": "/subscriptions/46eec74f-8b13-4ffb-b6e5-b4b4fa700492/resourceGroups/sappgroup/providers/Microsoft.Web/connections/azureblob-1",
             "type": "String"
         }
     },
@@ -20,7 +20,7 @@
         {
             "type": "Microsoft.Logic/workflows",
             "apiVersion": "2017-07-01",
-            "name": "[parameters('workflows_mncmediasamplelogic_name')]",
+            "name": "[parameters('workflows_mediasamplelogic_name')]",
             "location": "southeastasia",
             "properties": {
                 "state": "Enabled",
@@ -73,7 +73,7 @@
                                     "assetName": "@{body('SimpleAssetCreation')['nameAsset']}"
                                 },
                                 "function": {
-                                    "id": "[concat(parameters('sites_functionmncmediasample_externalid'), '/functions/EncodeAsset')]"
+                                    "id": "[concat(parameters('sites_functionmediasample_externalid'), '/functions/EncodeAsset')]"
                                 }
                             }
                         },
@@ -89,7 +89,7 @@
                                     "name": "@{body('CheckEncodeAssetStatus')['jobOutputStateList'][0]['AssetName']}"
                                 },
                                 "function": {
-                                    "id": "[concat(parameters('sites_functionmncmediasample_externalid'), '/functions/PublishAssetService')]"
+                                    "id": "[concat(parameters('sites_functionmediasample_externalid'), '/functions/PublishAssetService')]"
                                 }
                             }
                         },
@@ -101,7 +101,7 @@
                                     "assetName": "@triggerBody()?['DisplayName']"
                                 },
                                 "function": {
-                                    "id": "[concat(parameters('sites_functionmncmediasample_externalid'), '/functions/SimpleAssetCreation')]"
+                                    "id": "[concat(parameters('sites_functionmediasample_externalid'), '/functions/SimpleAssetCreation')]"
                                 }
                             }
                         },
@@ -116,7 +116,7 @@
                                             "destinationContainer": "@{body('UploadBlobIntoAsset')['destinationContainer']}"
                                         },
                                         "function": {
-                                            "id": "[concat(parameters('sites_functionmncmediasample_externalid'), '/functions/CheckUploadBlobStatus')]"
+                                            "id": "[concat(parameters('sites_functionmediasample_externalid'), '/functions/CheckUploadBlobStatus')]"
                                         }
                                     }
                                 }
@@ -141,7 +141,7 @@
                                     "inputs": {
                                         "body": "@body('EncodeAsset')",
                                         "function": {
-                                            "id": "[concat(parameters('sites_functionmncmediasample_externalid'), '/functions/CheckEncodeAssetStatus')]"
+                                            "id": "[concat(parameters('sites_functionmediasample_externalid'), '/functions/CheckEncodeAssetStatus')]"
                                         }
                                     }
                                 }
@@ -173,7 +173,7 @@
                                     "sourceContainer": "@{split(triggerBody()?['Path'],'/')[1]}"
                                 },
                                 "function": {
-                                    "id": "[concat(parameters('sites_functionmncmediasample_externalid'), '/functions/UploadBlobIntoAsset')]"
+                                    "id": "[concat(parameters('sites_functionmediasample_externalid'), '/functions/UploadBlobIntoAsset')]"
                                 }
                             }
                         }
